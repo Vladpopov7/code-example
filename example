@@ -1,0 +1,66 @@
+func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    let sectionType = sections[indexPath.section]
+    let model: CellViewAnyModel
+    switch sectionType {
+    case .header:
+        model = HeaderTableViewCellModel(headerImage: #imageLiteral(resourceName: "header"), title: "example header")
+    case .employee:
+        let employee = employees[indexPath.row]
+        model = EmployeeTableViewCellModel(employee: employee)
+    }
+    return tableView.dequeueReusableCell(withModel: model, for: indexPath)
+}
+protocol CellViewAnyModel {
+    static var cellAnyType: UIView.Type { get }
+    func setupAny(cell: UIView)
+}
+protocol CellViewModel: CellViewAnyModel {
+    associatedtype CellType: UIView
+    func setup(cell: CellType)
+}
+extension CellViewModel {
+    static var cellAnyType: UIView.Type {
+        return CellType.self
+    }
+    func setupAny(cell: UIView) {
+        setup(cell: cell as! CellType)
+    }
+}
+struct HeaderTableViewCellModel {
+    let headerImage: UIImage
+    let title: String
+}
+extension UITableView {
+    func dequeueReusableCell(withModel model: CellViewAnyModel, for indexPath: IndexPath) -> UITableViewCell {
+        let identifier = String(describing: type(of: model).cellAnyType) + "Identifier"
+        let cell = self.dequeueReusableCell(withIdentifier: identifier, for: indexPath)
+        model.setupAny(cell: cell)
+        return cell
+    }
+    func register(nibModels: [CellViewAnyModel.Type]) {
+        for model in nibModels {
+            let identifier = String(describing: model.cellAnyType)
+            let nib = UINib(nibName: identifier, bundle: nil)
+            self.register(nib, forCellReuseIdentifier: identifier + "Identifier")
+        }
+    }
+}
+
+extension HeaderTableViewCellModel: CellViewModel {
+    func setup(cell: HeaderTableViewCell) {
+        cell.titleLabel.text = title
+        cell.headerImageView.image = headerImage
+    }
+}
+struct EmployeeTableViewCellModel {
+    let employee: Employee
+    var fullName: String {
+        return employee.name + " " + employee.surname
+    }
+}
+extension EmployeeTableViewCellModel: CellViewModel {
+    func setup(cell: EmployeeTableViewCell) {
+        cell.nameLabel.text = fullName
+        cell.ageLabel.text = "\(employee.age)"
+    }
+}
